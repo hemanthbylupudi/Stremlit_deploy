@@ -3,9 +3,24 @@ import pandas as pd
 import pickle
 from PIL import Image
 
-# Load the trained model
-with open('breast_cancer_model.pkl', 'rb') as file:
-    model = pickle.load(file)
+import streamlit as st
+import pandas as pd
+import pickle
+
+# Load models from the pickle file
+with open('breast_cancer_models.pkl', 'rb') as file:
+    models = pickle.load(file)
+
+# Verify loaded models
+if not isinstance(models, dict):
+    st.error("Loaded object is not a dictionary. Please check the pickle file.")
+else:
+    model_no_smote = models.get('no_smote')
+    model_with_smote = models.get('with_smote')
+
+    if not model_no_smote or not model_with_smote:
+        st.error("Models not found in the dictionary. Please check the keys in the pickle file.")
+
 
 # Define feature names and descriptions
 feature_descriptions = {
@@ -44,14 +59,10 @@ st.markdown(
 st.sidebar.title("ℹ️ About the App")
 st.sidebar.info(
     """
-    This app uses a machine learning model trained on breast cancer data to predict whether a tumor is **malignant** or **benign**.
-    Simply provide the feature values below and click **Predict**.
+    This app uses two machine learning models to predict whether a tumor is **malignant** or **benign**.
+    Compare predictions from models trained **with SMOTE** and **without SMOTE**, or choose to view one.
     """
 )
-
-# Sidebar placeholder for future settings
-st.sidebar.header("⚙️ Settings")
-st.sidebar.write("More settings coming soon!")
 
 # Feature input section
 st.markdown("## 🔍 **Input Feature Values**:")
@@ -75,31 +86,53 @@ input_data = pd.DataFrame([user_input])
 if st.checkbox("Show input data"):
     st.write("### Input Data Preview", input_data)
 
-# Prediction section
+# Prediction section with checkboxes
+st.markdown("## ⚙️ **Choose Model(s) to Predict**")
+use_smote = st.checkbox("Use Model with SMOTE", value=True)
+use_no_smote = st.checkbox("Use Model without SMOTE", value=True)
+
 if st.button("💡 Predict"):
     try:
-        prediction = model.predict(input_data)[0]  # Predict outcome
-        probability = model.predict_proba(input_data)[0]  # Get probabilities
+        if use_no_smote:
+            # Results for model without SMOTE
+            st.markdown("### Model Without SMOTE")
+            prediction_no_smote = model_no_smote.predict(input_data)[0]
+            probability_no_smote = model_no_smote.predict_proba(input_data)[0]
 
-        # Styling for prediction result
-        if prediction == 1:
-            st.markdown(
-                f"<h2 style='text-align: center; color: red;'>🔴 Cancerous</h2>", 
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"<h2 style='text-align: center; color: green;'>🟢 Non-Cancerous</h2>", 
-                unsafe_allow_html=True
-            )
-        
-        # Display prediction probabilities
-        st.write("### Prediction Confidence")
-        malignant_confidence = probability[1]
-        benign_confidence = probability[0]
-        st.progress(malignant_confidence)
-        st.info(f"**Malignant Probability:** {malignant_confidence:.2f}")
-        st.info(f"**Benign Probability:** {benign_confidence:.2f}")
+            if prediction_no_smote == 1:
+                st.markdown(
+                    f"<h2 style='text-align: center; color: red;'>🔴 Cancerous</h2>",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"<h2 style='text-align: center; color: green;'>🟢 Non-Cancerous</h2>",
+                    unsafe_allow_html=True
+                )
+            st.info(f"**Malignant Probability:** {probability_no_smote[1]:.2f}")
+            st.info(f"**Benign Probability:** {probability_no_smote[0]:.2f}")
+
+        if use_smote:
+            # Results for model with SMOTE
+            st.markdown("### Model With SMOTE")
+            prediction_with_smote = model_with_smote.predict(input_data)[0]
+            probability_with_smote = model_with_smote.predict_proba(input_data)[0]
+
+            if prediction_with_smote == 1:
+                st.markdown(
+                    f"<h2 style='text-align: center; color: red;'>🔴 Cancerous</h2>",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"<h2 style='text-align: center; color: green;'>🟢 Non-Cancerous</h2>",
+                    unsafe_allow_html=True
+                )
+            st.info(f"**Malignant Probability:** {probability_with_smote[1]:.2f}")
+            st.info(f"**Benign Probability:** {probability_with_smote[0]:.2f}")
+
+        if not (use_smote or use_no_smote):
+            st.warning("Please select at least one model to predict.")
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
