@@ -2,37 +2,47 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load the trained model
-model = joblib.load("model.pkl")
+# Load the model and important features
+model, important_features = joblib.load("model_with_features.pkl")
 
-# Define the exact feature names in the correct order used during model training
-feature_names = [
-    'radius2', 'texture2', 'smoothness2', 'compactness3', 'concavity2'
-    # Add all feature names here, in the same order as the training data
+# Original feature order used during training
+original_order = [
+    'radius1', 'texture1', 'perimeter1', 'area1', 'smoothness1',
+    'compactness1', 'concavity1', 'concave_points1', 'symmetry1',
+    'fractal_dimension1', 'radius2', 'texture2', 'perimeter2', 'area2',
+    'smoothness2', 'compactness2', 'concavity2', 'concave_points2',
+    'symmetry2', 'fractal_dimension2', 'radius3', 'texture3', 'perimeter3',
+    'area3', 'smoothness3', 'compactness3', 'concavity3', 'concave_points3',
+    'symmetry3', 'fractal_dimension3'
 ]
 
-# Streamlit app
-st.title("Disease Prediction Model")
-st.write("Enter the feature values in the fields below to predict the diagnosis.")
+# Align important features with the original order
+important_features_in_order = [feature for feature in original_order if feature in important_features]
 
-# Create input fields for each feature
-inputs = []
-for feature in feature_names:
-    value = st.number_input(f"Enter {feature}", value=0.0)
-    inputs.append(value)
+# Streamlit App
+st.title("Breast Cancer Prediction App")
+st.write("Enter the values for the important features to predict if the tumor is benign or malignant.")
 
-# Predict button
+# Collect user inputs for all features
+input_data = {}
+for feature in original_order:
+    if feature in important_features_in_order:
+        value = st.number_input(f"Enter value for {feature}:", step=0.01)
+    else:
+        value = 0.0  # Default value for features not in the important list
+    input_data[feature] = value
+
+# When the "Predict" button is clicked
 if st.button("Predict"):
-    # Convert inputs into a DataFrame and ensure the column names match
-    input_data = pd.DataFrame([inputs], columns=feature_names)
-
+    # Convert input data to a DataFrame, ensuring the correct order
+    input_df = pd.DataFrame([input_data])
+    
+    # Make prediction
     try:
-        # Make prediction
-        prediction = model.predict(input_data)
-        prediction_proba = model.predict_proba(input_data)
+        prediction = model.predict(input_df)[0]
+        prediction_label = "Malignant" if prediction == 1 else "Benign"
+        st.success(f"The predicted result is: {prediction_label}")
+    except ValueError as e:
+        st.error(f"Error during prediction: {str(e)}")
 
-        # Display results
-        st.write(f"Prediction: {'Positive' if prediction[0] == 1 else 'Negative'}")
-        st.write(f"Probability: {prediction_proba[0][1]*100:.2f}% Positive, {prediction_proba[0][0]*100:.2f}% Negative")
-    except Exception as e:
-        st.error(f"Error: {e}")
+st.write("Model Loaded Successfully!")
